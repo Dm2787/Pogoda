@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stacja Pogodowa v15.5.0 - Global Time Sync</title>
+    <style>
+        /* --- SYSTEM ANIMACJI --- */
+        @keyframes breathe {
+            0%, 100% { box-shadow: 0 0 15px rgba(currentColor, 0.2); transform: scale(1); }
+            50% { box-shadow: 0 0 35px rgba(currentColor, 0.4); transform: scale(1.005); }
+        }
+        @keyframes path-pulse {
+            0%, 100% { opacity: 0.4; filter: drop-shadow(0 0 2px currentColor); }
+            50% { opacity: 0.8; filter: drop-shadow(0 0 5px currentColor); }
+        }
+
+        body {
+            background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0;
+            padding: 20px 10px; box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .weather-card {
+            background: rgba(20, 20, 20, 0.95);
+            padding: 25px; border-radius: 40px; border: 2px solid currentColor;
+            animation: breathe 5s ease-in-out infinite;
+            text-align: center; width: 100%; max-width: 440px;
+            transition: all 1s ease; box-sizing: border-box;
+        }
+
+        #clock { font-size: clamp(2.5rem, 10vw, 3.5rem); font-weight: 800; margin: 0; line-height: 1; letter-spacing: -2px; }
+        #date { font-size: 1rem; color: #eee; margin: 5px 0 10px 0; }
+        #city { font-size: 1.1rem; font-weight: bold; color: #888; text-transform: uppercase; letter-spacing: 2px; }
+        #last-update { font-size: 0.6rem; color: #555; margin-bottom: 5px; text-transform: uppercase; }
+        
+        #temp { font-size: clamp(3.5rem, 15vw, 5rem); font-weight: 900; line-height: 0.9; margin: 15px 0 5px 0; letter-spacing: -3px; }
+        #weather-desc { font-size: 1.1rem; font-weight: 600; text-transform: capitalize; margin-bottom: 20px; opacity: 0.9; }
+
+        .section-container { margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.1); text-align: left; }
+        .section-title { font-size: 0.7rem; color: #aaa; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 2px; font-weight: bold; display: block; padding-left: 5px; }
+
+        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .detail-item {
+            display: flex; flex-direction: column; align-items: center;
+            background: rgba(255, 255, 255, 0.03); padding: 15px; border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .detail-label { font-size: 0.65rem; color: #888; text-transform: uppercase; margin-bottom: 4px; display: flex; flex-direction: column; align-items: center; gap: 8px; font-weight: bold; text-align: center; }
+        .detail-icon-svg { width: 26px; height: 26px; filter: drop-shadow(0 0 5px currentColor); stroke-width: 1.5; transition: all 1s ease; }
+        .detail-value { font-size: 1.1rem; font-weight: 800; }
+
+        .uv-container { grid-column: span 2; margin-top: 10px; background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 25px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 10px; }
+        .uv-header { display: flex; justify-content: space-between; align-items: center; }
+        .uv-bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; position: relative; }
+        #uv-bar-fill { height: 100%; width: 0%; border-radius: 10px; transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        #uv-desc { font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
+
+        .astro-card { background: rgba(255, 255, 255, 0.05); border-radius: 25px; padding: 20px 15px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
+        .astro-scene { height: 100px; position: relative; border-bottom: 1px dashed rgba(255,255,255,0.1); margin-bottom: 10px; }
+        .astro-path-svg { position: absolute; width: 100%; height: 100%; top: 0; left: 0; }
+        .path-bg { stroke: rgba(255,255,255,0.1); stroke-width: 1; fill: none; stroke-dasharray: 4; }
+        .path-active { stroke: currentColor; stroke-width: 3; fill: none; stroke-linecap: round; animation: path-pulse 3s infinite ease-in-out; }
+        #astro-object-wrapper { position: absolute; display: flex; flex-direction: column; align-items: center; transition: all 1s ease; z-index: 10; }
+        #astro-icon { font-size: 2.2rem; filter: drop-shadow(0 0 10px currentColor); }
+        .astro-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: #999; }
+
+        .forecast-scroll { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding: 5px 0; }
+        .forecast-item { background: rgba(255,255,255,0.04); padding: 15px 10px; border-radius: 18px; min-width: 75px; text-align: center; border: 1px solid rgba(255,255,255,0.03); }
+        .forecast-time { font-size: 0.85rem; font-weight: bold; color: #bbb; }
+        .forecast-icon { width: 45px; height: 45px; margin: 4px 0; }
+        .forecast-temp { font-size: 1.2rem; font-weight: 900; }
+
+        .forecast-long { display: flex; flex-direction: column; gap: 8px; }
+        .long-day-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            background: rgba(255,255,255,0.03); padding: 10px 18px; border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .day-name { width: 45px; font-weight: 800; font-size: 0.9rem; text-transform: uppercase; }
+        .day-desc { flex-grow: 1; font-size: 0.75rem; color: #aaa; padding-left: 15px; text-transform: capitalize; }
+        .day-temps { font-size: 0.95rem; font-weight: 900; min-width: 70px; text-align: right; }
+        .temp-night { color: #666; font-size: 0.8rem; margin-left: 5px; }
+        .day-icon-small { width: 32px; height: 32px; }
+
+        .controls { margin-bottom: 20px; display: flex; gap: 6px; justify-content: center; }
+        input { background: #1a1a1a; border: 1px solid #333; color: white; padding: 10px; border-radius: 15px; width: 120px; outline: none; font-size: 0.9rem; }
+        button { background: #222; color: white; border: 1px solid #333; padding: 10px 14px; border-radius: 15px; cursor: pointer; transition: all 0.3s ease; font-size: 1rem; outline: none; }
+        button:active { transform: scale(0.95); background: #444; }
+        .wake-lock-active { background: currentColor !important; color: #000 !important; border-color: transparent !important; box-shadow: 0 0 15px currentColor; }
+    </style>
+</head>
+<body>
+    <div class="weather-card" id="main-card">
+        <div class="controls">
+            <input type="text" id="city-input" placeholder="Miasto...">
+            <button onclick="searchCity()">OK</button>
+            <button onclick="getLocation()">📍</button>
+            <button id="wake-lock-btn" onclick="toggleWakeLock()">🔓</button>
+        </div>
+
+        <div id="clock">00:00:00</div>
+        <div id="date">--</div>
+        <div id="city">--</div>
+        <div id="last-update">Ładowanie...</div>
+        <div id="temp">--°C</div>
+        <div id="weather-desc">--</div>
+
+        <div class="section-container">
+            <span class="section-title">Warunki Atmosferyczne</span>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <span class="detail-label">
+                        <svg class="detail-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"></path></svg>
+                        Wiatr
+                    </span>
+                    <span id="wind" class="detail-value dynamic-color">--</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">
+                        <svg class="detail-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+                        Wilgoć
+                    </span>
+                    <span id="humidity" class="detail-value dynamic-color">--</span>
+                </div>
+                <div class="detail-item" id="precip-tile">
+                    <span class="detail-label" id="precip-label">
+                        <svg class="detail-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 13a4 4 0 0 1-8 0l4-9 4 9z"></path></svg>
+                        Deszcz
+                    </span>
+                    <span id="rain" class="detail-value dynamic-color">0 mm</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">
+                        <svg class="detail-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 10h22M1 14h22M4 18h16M7 22h10M2 6h20"></path></svg>
+                        Mgła
+                    </span>
+                    <span id="vis" class="detail-value dynamic-color">--</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">
+                        <svg class="detail-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+                        Chmury
+                    </span>
+                    <span id="clouds" class="detail-value dynamic-color">--</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">
+                        <svg class="detail-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        Ciśnienie
+                    </span>
+                    <span id="pressure" class="detail-value dynamic-color">--</span>
+                </div>
+                <div class="uv-container">
+                    <div class="uv-header">
+                        <span class="detail-label" style="margin:0; flex-direction: row; gap: 10px;">
+                            <svg class="detail-icon-svg" style="width:20px; height:20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                            Indeks UV
+                        </span>
+                        <span id="uv-value" class="detail-value">0</span>
+                    </div>
+                    <div class="uv-bar-bg"><div id="uv-bar-fill"></div></div>
+                    <div id="uv-desc">Oczekiwanie...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-container">
+            <span class="section-title">Cykl Astronomiczny</span>
+            <div class="astro-card">
+                <div class="astro-scene">
+                    <svg class="astro-path-svg" viewBox="0 0 400 100" preserveAspectRatio="none">
+                        <path class="path-bg" d="M 20 90 Q 200 20 380 90" />
+                        <path id="path-active" class="path-active" d="M 20 90 Q 200 20 380 90" />
+                    </svg>
+                    <div id="astro-object-wrapper">
+                        <span id="astro-icon">☀️</span>
+                        <span id="astro-time-float" style="font-size: 0.8rem; font-weight: bold; margin-top: 5px;">--:--</span>
+                    </div>
+                </div>
+                <div class="astro-labels">
+                    <div id="astro-start">--</div>
+                    <div id="astro-status" style="font-weight: 900; text-transform: uppercase;">--</div>
+                    <div id="astro-end">--</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-container">
+            <span class="section-title">Dzisiaj (co 3h)</span>
+            <div class="forecast-scroll" id="forecast-list"></div>
+        </div>
+
+        <div class="section-container">
+            <span class="section-title">Prognoza Tygodniowa</span>
+            <div class="forecast-long" id="forecast-long-list"></div>
+        </div>
+    </div>
+        <script>
+        const API_KEY = 'e94db93056809bfb981e952b387a22e6';
+        let currentCity = "Warszawa", sunData = { rise: 0, set: 0 }, cityTimezone = 0, lastLat = null, lastLon = null, wakeLock = null, cloudCover = 0;
+
+        // --- OBSŁUGA BLOKADY EKRANU ---
+        async function toggleWakeLock() {
+            const btn = document.getElementById('wake-lock-btn');
+            if ('wakeLock' in navigator) {
+                if (wakeLock === null) {
+                    try {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                        btn.classList.add('wake-lock-active'); btn.textContent = '🔒';
+                    } catch (e) {}
+                } else {
+                    await wakeLock.release(); wakeLock = null;
+                    btn.classList.remove('wake-lock-active'); btn.textContent = '🔓';
+                }
+            }
+        }
+
+        // --- LOGIKA UV ---
+        function calculateUV(percentDay) {
+            if (percentDay <= 0 || percentDay >= 1) return 0;
+            let baseUV = Math.sin(percentDay * Math.PI) * 11; 
+            let cloudFactor = 1 - (cloudCover / 100 * 0.7);
+            return Math.max(0, baseUV * cloudFactor);
+        }
+
+        function updateUVDisplay(val) {
+            const bar = document.getElementById('uv-bar-fill'), desc = document.getElementById('uv-desc'), display = document.getElementById('uv-value');
+            display.textContent = val.toFixed(1);
+            let percent = (val / 12) * 100;
+            bar.style.width = Math.min(percent, 100) + "%";
+            if (val <= 2.9) { bar.style.backgroundColor = "#55ee55"; desc.textContent = "Niski"; }
+            else if (val <= 5.9) { bar.style.backgroundColor = "#f9d423"; desc.textContent = "Umiarkowany"; }
+            else if (val <= 7.9) { bar.style.backgroundColor = "#ff922b"; desc.textContent = "Wysoki"; }
+            else { bar.style.backgroundColor = "#f03e3e"; desc.textContent = "Bardzo Wysoki"; }
+        }
+
+        // --- ZEGAR I SYNCHRONIZACJA CZASU ŚWIATOWEGO ---
+        function updateDateTime() {
+            const now = new Date();
+            // Główny zegar (Twój czas lokalny)
+            document.getElementById('clock').textContent = now.toLocaleTimeString('pl-PL');
+            document.getElementById('date').textContent = now.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
+            
+            // Obliczanie czasu w wybranym mieście (dla wykresu słońca)
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const cityLocalTime = new Date(utc + (1000 * cityTimezone));
+            
+            document.getElementById('astro-time-float').textContent = cityLocalTime.toLocaleTimeString('pl-PL', {hour: '2-digit', minute: '2-digit'});
+            updateAstroUI(cityLocalTime);
+        }
+
+        function getDetailedMoonPhase(date) {
+            const lp = 2551443; const now = date.getTime() / 1000; const phase = ((now - 592500) % lp) / lp; 
+            if (phase < 0.03 || phase > 0.97) return { n: "Nów", i: "🌑" };
+            if (phase < 0.22) return { n: "Przyrastający sierp", i: "🌒" };
+            if (phase < 0.28) return { n: "Pierwsza kwadra", i: "🌓" };
+            if (phase < 0.47) return { n: "Przyrastający garb", i: "🌔" };
+            if (phase < 0.53) return { n: "Pełnia", i: "🌕" };
+            if (phase < 0.72) return { n: "Ubywający garb", i: "🌖" };
+            if (phase < 0.78) return { n: "Ostatnia kwadra", i: "🌗" };
+            return { n: "Ubywający sierp", i: "🌘" };
+        }
+
+        function updateAstroUI(cityLocalTime) {
+            const timeSeconds = Math.floor(cityLocalTime.getTime() / 1000);
+            const isDay = timeSeconds >= sunData.rise && timeSeconds < sunData.set;
+            let percent;
+
+            if (isDay) {
+                percent = (timeSeconds - sunData.rise) / (sunData.set - sunData.rise);
+            } else {
+                const nightDuration = 86400 - (sunData.set - sunData.rise);
+                let nightTime = timeSeconds >= sunData.set ? timeSeconds - sunData.set : timeSeconds + (86400 - sunData.set);
+                percent = nightTime / nightDuration;
+            }
+
+            percent = Math.min(1, Math.max(0, percent));
+
+            if (isDay) {
+                document.getElementById('astro-icon').textContent = "☀️";
+                document.getElementById('astro-status').textContent = "Dzień";
+                updateUVDisplay(calculateUV(percent));
+            } else {
+                const moon = getDetailedMoonPhase(cityLocalTime);
+                document.getElementById('astro-icon').textContent = moon.i;
+                document.getElementById('astro-status').textContent = moon.n;
+                updateUVDisplay(0);
+            }
+
+            const wrapper = document.getElementById('astro-object-wrapper');
+            const x = 20 + (360 * percent), y = 100 - (280 * percent * (1 - percent));
+            wrapper.style.left = `${(x / 400) * 100}%`; wrapper.style.top = `${y}px`; wrapper.style.transform = `translate(-50%, -50%)`;
+            const activePath = document.getElementById('path-active'), pL = activePath.getTotalLength();
+            activePath.style.strokeDasharray = pL; activePath.style.strokeDashoffset = pL * (1 - percent);
+        }
+
+        // --- POBIERANIE DANYCH ---
+        async function fetchWeather(lat, lon, city = null) {
+            let url = city ? `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric&lang=pl`
+                           : `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=pl`;
+            try {
+                const res = await fetch(url); const data = await res.json();
+                if (data.cod === 200) {
+                    currentCity = city || null; lastLat = data.coord.lat; lastLon = data.coord.lon;
+                    cityTimezone = data.timezone;
+                    sunData = { rise: data.sys.sunrise, set: data.sys.sunset };
+                    cloudCover = data.clouds.all;
+
+                    document.getElementById('city').textContent = data.name;
+                    document.getElementById('temp').textContent = Math.round(data.main.temp) + "°C";
+                    document.getElementById('weather-desc').textContent = data.weather[0].description;
+                    document.getElementById('wind').textContent = Math.round(data.wind.speed * 3.6) + " km/h";
+                    document.getElementById('humidity').textContent = data.main.humidity + "%";
+                    document.getElementById('clouds').textContent = data.clouds.all + 
+                    document.getElementById('pressure').textContent = data.main.pressure + " hPa";
+                    
+                    // Inteligentny kafelek śnieg/deszcz
+                    const rainVal = data.rain ? (data.rain['1h'] || 0) : 0;
+                    const snowVal = data.snow ? (data.snow['1h'] || 0) : 0;
+                    const pL = document.getElementById('precip-label');
+                    const pV = document.getElementById('rain');
+
+                    if (snowVal > 0) {
+                        pL.innerHTML = `<svg class="detail-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 5.4 14.25M8 16h.01M8 20h.01M12 18h.01M12 22h.01M16 16h.01M16 20h.01"></path></svg>Śnieg`;
+                        pV.textContent = snowVal + " mm";
+                    } else {
+                        pL.innerHTML = `<svg class="detail-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 13a4 4 0 0 1-8 0l4-9 4 9z"></path></svg>Deszcz`;
+                        pV.textContent = rainVal + " mm";
+                    }
+
+                    const visVal = data.visibility ? (data.visibility / 1000).toFixed(1) : "--";
+                    document.getElementById('vis').textContent = visVal + " km";
+                    document.getElementById('last-update').textContent = `Aktualizacja: ${new Date().toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'})}`;
+                    
+                    // Etykiety wschodu/zachodu w czasie lokalnym miasta
+                    const fT = (u) => {
+                        const date = new Date(u * 1000 + (data.timezone * 1000) + (new Date().getTimezoneOffset() * 60000));
+                        return date.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
+                    };
+                    document.getElementById('astro-start').textContent = `Wschód: ${fT(data.sys.sunrise)}`;
+                    document.getElementById('astro-end').textContent = `Zachód: ${fT(data.sys.sunset)}`;
+                    
+                    // Kolorystyka zależna od pory dnia w mieście docelowym
+                    const utcDate = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
+                    const cityNowSeconds = Math.floor((utcDate + (1000 * data.timezone)) / 1000);
+                    let theme = (cityNowSeconds >= data.sys.sunrise && cityNowSeconds < data.sys.sunset) ? "#ffcc00" : "#00ffff";
+                    
+                    document.getElementById('main-card').style.color = theme;
+                    document.querySelectorAll('.dynamic-color, #clock, #astro-time-float, .path-active, #astro-status, .detail-icon-svg').forEach(el => el.style.color = theme);
+                    fetchForecast(data.coord.lat, data.coord.lon, city);
+                }
+            } catch (e) {}
+        }
+
+        async function fetchForecast(lat, lon, city) {
+            let url = city ? `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric&lang=pl`
+                           : `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=pl`;
+            try {
+                const res = await fetch(url); const data = await res.json();
+                const list = document.getElementById('forecast-list'); list.innerHTML = "";
+                data.list.slice(0, 8).forEach(item => {
+                    const time = new Date(item.dt * 1000).toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
+                    list.innerHTML += `<div class="forecast-item"><span class="forecast-time">${time}</span><br><img src="https://openweathermap.org/img/wn/${item.weather[0].icon}@2x.png" class="forecast-icon"><br><span class="forecast-temp">${Math.round(item.main.temp)}°</span></div>`;
+                });
+                const longList = document.getElementById('forecast-long-list'); longList.innerHTML = "";
+                const days = {};
+                data.list.forEach(item => {
+                    const d = new Date(item.dt * 1000).toLocaleDateString('pl-PL', { weekday: 'short' });
+                    if (!days[d]) days[d] = { max: -99, min: 99, icon: "", desc: "" };
+                    if (item.main.temp_max > days[d].max) days[d].max = item.main.temp_max;
+                    if (item.main.temp_min < days[d].min) days[d].min = item.main.temp_min;
+                    if (item.dt_txt.includes("12:00:00") || days[d].icon === "") { days[d].icon = item.weather[0].icon; days[d].desc = item.weather[0].description; }
+                });
+                Object.keys(days).slice(1, 6).forEach(day => {
+                    longList.innerHTML += `<div class="long-day-item"><span class="day-name">${day}</span><img src="https://openweathermap.org/img/wn/${days[day].icon}.png" class="day-icon-small"><span class="day-desc">${days[day].desc}</span><div class="day-temps">${Math.round(days[day].max)}°<span class="temp-night">${Math.round(days[day].min)}°</span></div></div>`;
+                });
+            } catch (e) {}
+        }
+
+        function refreshData() { if (currentCity) fetchWeather(null, null, currentCity); else if (lastLat && lastLon) fetchWeather(lastLat, lastLon); }
+        function getLocation() { if (navigator.geolocation) navigator.geolocation.getCurrentPosition((p) => fetchWeather(p.coords.latitude, p.coords.longitude), () => fetchWeather(null, null, "Warszawa")); else fetchWeather(null, null, "Warszawa"); }
+        function searchCity() { const city = document.getElementById('city-input').value; if (city) fetchWeather(null, null, city); }
+        
+        setInterval(updateDateTime, 1000); setInterval(refreshData, 900000);
+        updateDateTime(); getLocation();
+    </script>
+</body>
+</html>
