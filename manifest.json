@@ -16,7 +16,7 @@
       "purpose": "any maskable"
     }
   ],
-  "start_url": "./indeks.html",
+  "start_url": "./index.html",
   "background_color": "#0a0a0a",
   "display": "standalone",
   "scope": "./",
