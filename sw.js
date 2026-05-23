@@ -1,8 +1,7 @@
 const CACHE_NAME = 'weather-station-v1';
 const ASSETS = [
   'index.html',
-  'manifest.json',
-  'https://openweathermap.org/img/wn/01d@2x.png' // Przykładowa ikona na start, reszta doda się dynamicznie
+  'manifest.json'
 ];
 
 // Instalacja i cache'owanie plików instalacyjnych
@@ -32,7 +31,7 @@ self.addEventListener('activate', (e) => {
 // Obsługa zapytań (Strategia hybrydowa)
 self.addEventListener('fetch', (e) => {
   // Dla zapytań do API OpenWeatherMap używamy strategii Network First (zawsze świeże dane)
-  if (e.request.url.includes('api.openweathermap.org')) {
+  if (e.request.url.includes('api.openweathermap.org') || e.request.url.includes('openweathermap.org/img')) {
     e.respondWith(
       fetch(e.request)
         .then((response) => {
@@ -42,10 +41,10 @@ self.addEventListener('fetch', (e) => {
           });
           return response;
         })
-        .catch(() => caches.match(e.request)) // W razie braku sieci, zwróć ostatnio zapamiętaną pogodę
+        .catch(() => caches.match(e.request)) // W razie braku sieci, zwróć ostatnio zapamiętaną pogodę/ikonę
     );
   } else {
-    // Dla plików lokalnych (HTML, manifest, ikony) - Cache First
+    // Dla plików lokalnych (HTML, manifest, lokalne ikony) - Cache First
     e.respondWith(
       caches.match(e.request).then((cachedResponse) => {
         return cachedResponse || fetch(e.request).then((response) => {
@@ -59,4 +58,3 @@ self.addEventListener('fetch', (e) => {
     );
   }
 });
-                      
