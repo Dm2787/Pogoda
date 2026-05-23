@@ -7,7 +7,9 @@
     <link rel="manifest" href="manifest.json">
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js');
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js').catch(err => console.log('SW error:', err));
+        });
       }
     </script>
     <style>   
@@ -298,6 +300,7 @@
 
         function updateThermalComfort(temp, humidity, windKmH) {
             const el = document.getElementById('comfort-index');
+            if (!el) return;
             if (temp <= 0) { el.textContent = "Uważaj, możliwe oblodzenie!"; }
             else if (temp > 0 && temp <= 10) { el.textContent = "Przejmujący chłód"; }
             else if (temp > 10 && temp <= 17) { el.textContent = "Chłodno, weź kurtkę"; }
@@ -314,6 +317,7 @@
 
         function initWeatherParticles(weatherId, isDay) {
             const container = document.getElementById('card-particles');
+            if (!container) return;
             container.innerHTML = "";
             let pCount = 15;
             let type = "light";
@@ -365,6 +369,7 @@
 
         function updateUVDisplay(val) {
             const bar = document.getElementById('uv-bar-fill'), desc = document.getElementById('uv-desc'), display = document.getElementById('uv-value');
+            if(!bar || !desc || !display) return;
             display.textContent = val.toFixed(1);
             let percent = (val / 12) * 100;
             bar.style.width = Math.min(percent, 100) + "%";
@@ -376,16 +381,24 @@
 
         function checkPressureTrend(currentPressure) {
             const now = Date.now();
-            let history = JSON.parse(localStorage.getItem('weather_pressure_history')) || [];
+            let history = [];
+            try {
+                history = JSON.parse(localStorage.getItem('weather_pressure_history')) || [];
+            } catch(e) { history = []; }
+            
             history.push({ timestamp: now, val: currentPressure });
             history = history.filter(item => now - item.timestamp <= 10800000);
-            localStorage.setItem('weather_pressure_history', JSON.stringify(history));
+            
+            try {
+                localStorage.setItem('weather_pressure_history', JSON.stringify(history));
+            } catch(e){}
 
             const alertBox = document.getElementById('baro-storm-alert');
             const tile = document.getElementById('pressure-tile');
             const label = document.getElementById('pressure-label');
             const valueDisplay = document.getElementById('pressure');
             
+            if(!alertBox || !tile || !label || !valueDisplay) return;
             let trendArrow = "→";
 
             if (history.length > 1) {
@@ -480,14 +493,19 @@
             }
 
             const wrapper = document.getElementById('astro-object-wrapper');
-            const x = 20 + (360 * percent), y = 100 - (280 * percent * (1 - percent));
-            wrapper.style.left = `${(x / 400) * 100}%`; 
-            wrapper.style.top = `${y}px`; 
-            wrapper.style.transform = `translate(-50%, -100%)`;
+            if(wrapper) {
+                const x = 20 + (360 * percent), y = 100 - (280 * percent * (1 - percent));
+                wrapper.style.left = `${(x / 400) * 100}%`; 
+                wrapper.style.top = `${y}px`; 
+                wrapper.style.transform = `translate(-50%, -100%)`;
+            }
             
-            const activePath = document.getElementById('path-active'), pL = activePath.getTotalLength();
-            activePath.style.strokeDasharray = pL; 
-            activePath.style.strokeDashoffset = pL * (1 - percent);
+            const activePath = document.getElementById('path-active');
+            if(activePath) {
+                const pL = activePath.getTotalLength();
+                activePath.style.strokeDasharray = pL; 
+                activePath.style.strokeDashoffset = pL * (1 - percent);
+            }
         }
 
         async function fetchWeather(lat, lon, city = null) {
@@ -522,12 +540,14 @@
                     const pL = document.getElementById('precip-label');
                     const pV = document.getElementById('rain');
 
-                    if (snowVal > 0) {
-                        pL.innerHTML = `<svg class="detail-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 5.4 14.25M8 16h.01M8 20h.01M12 18h.01M12 22h.01M16 16h.01M16 20h.01"></path></svg>Śnieg`;
-                        pV.textContent = snowVal + " mm";
-                    } else {
-                        pL.innerHTML = `<svg class="detail-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 13a4 4 0 0 1-8 0l4-9 4 9z"></path></svg>Deszcz`;
-                        pV.textContent = rainVal + " mm";
+                    if (pL && pV) {
+                        if (snowVal > 0) {
+                            pL.innerHTML = `<svg class="detail-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 5.4 14.25M8 16h.01M8 20h.01M12 18h.01M12 22h.01M16 16h.01M16 20h.01"></path></svg>Śnieg`;
+                            pV.textContent = snowVal + " mm";
+                        } else {
+                            pL.innerHTML = `<svg class="detail-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 13a4 4 0 0 1-8 0l4-9 4 9z"></path></svg>Deszcz`;
+                            pV.textContent = rainVal + " mm";
+                        }
                     }
 
                     const visVal = data.visibility ? (data.visibility / 1000).toFixed(1) : "--";
@@ -553,7 +573,7 @@
                     
                     fetchForecast(data.coord.lat, data.coord.lon, city);
                 }
-            } catch (e) {}
+            } catch (e) { console.log(e); }
         }
 
         async function fetchForecast(lat, lon, city) {
@@ -565,6 +585,7 @@
                 const sliceData = data.list.slice(0, 8);
                 const nodesLayer = document.getElementById('chart-nodes-html');
                 const pathEl = document.getElementById('chart-line-path');
+                if(!nodesLayer || !pathEl) return;
                 nodesLayer.innerHTML = "";
                 
                 let temps = sliceData.map(item => Math.round(item.main.temp));
@@ -605,7 +626,9 @@
                     `;
                 });
 
-                const longList = document.getElementById('forecast-long-list'); longList.innerHTML = "";
+                const longList = document.getElementById('forecast-long-list'); 
+                if(!longList) return;
+                longList.innerHTML = "";
                 const days = {};
                 data.list.forEach(item => {
                     const d = new Date(item.dt * 1000).toLocaleDateString('pl-PL', { weekday: 'short' });
@@ -621,11 +644,25 @@
         }
 
         function refreshData() { if (currentCity) fetchWeather(null, null, currentCity); else if (lastLat && lastLon) fetchWeather(lastLat, lastLon); }
-        function getLocation() { if (navigator.geolocation) navigator.geolocation.getCurrentPosition((p) => fetchWeather(p.coords.latitude, p.coords.longitude), () => fetchWeather(null, null, "Warszawa")); else fetchWeather(null, null, "Warszawa"); }
+        
+        function getLocation() { 
+            if (navigator.geolocation) { 
+                navigator.geolocation.getCurrentPosition(
+                    (p) => fetchWeather(p.coords.latitude, p.coords.longitude), 
+                    () => fetchWeather(null, null, "Warszawa")
+                ); 
+            } else { 
+                fetchWeather(null, null, "Warszawa"); 
+            } 
+        }
+        
         function searchCity() { const city = document.getElementById('city-input').value; if (city) fetchWeather(null, null, city); }
         
-        setInterval(updateDateTime, 1000); setInterval(refreshData, 900000);
-        updateDateTime(); getLocation();
+        // Start systemów
+        setInterval(updateDateTime, 1000); 
+        setInterval(refreshData, 900000);
+        updateDateTime(); 
+        getLocation();
     </script>
 </body>
 </html>
