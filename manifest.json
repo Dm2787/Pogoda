@@ -1,25 +1,24 @@
 {
+  "name": "Stacja Pogodowa v17.7.5",
   "short_name": "Pogoda",
-  "name": "Pogoda v15.5",
-  "description": "Inteligentna aplikacja pogodowa z cyklem astronomicznym.",
+  "description": "Zaawansowana, minimalistyczna stacja pogodowa PWA",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#030303",
+  "theme_color": "#ffcc00",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "icon-192.png",
-      "type": "image/png",
       "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
       "src": "icon-512.png",
-      "type": "image/png",
       "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "start_url": "./index.html",
-  "background_color": "#0a0a0a",
-  "display": "standalone",
-  "scope": "./",
-  "theme_color": "#ffcc00",
-  "orientation": "portrait"
+  ]
 }
