@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stacja Pogodowa v17.7.5</title>
+    <title>Stacja Pogodowa v17.8.0</title>
     <link rel="manifest" href="manifest.json">
     <script>
       if ('serviceWorker' in navigator) {
@@ -36,6 +36,35 @@
             0%, 100% { transform: translateY(0) scale(1); opacity: 0.08; }
             50% { transform: translateY(-50px) scale(1.25); opacity: 0.25; }
         }
+
+        /* --- DYNAMICZNE ANIMACJE IKON SVG --- */
+        @keyframes spin-slow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes float-smooth {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+        @keyframes rain-drop {
+            0% { transform: translateY(0) scaleY(1); opacity: 0; }
+            10% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateY(4px) scaleY(0.8); opacity: 0; }
+        }
+        @keyframes lightning-strike {
+            0%, 100% { opacity: 0.3; }
+            5%, 15% { opacity: 1; filter: drop-shadow(0 0 6px currentColor); }
+            10% { opacity: 0.5; }
+        }
+
+        .icon-sun { animation: spin-slow 20s linear infinite; transform-origin: 12px 12px; }
+        .icon-sun-back { animation: spin-slow 25s linear infinite; transform-origin: 16px 7px; }
+        .icon-cloud { animation: float-smooth 4s ease-in-out infinite; }
+        .icon-cloud-back { animation: float-smooth 4.5s ease-in-out infinite; animation-delay: 0.5s; }
+        .icon-rain-line { animation: rain-drop 1.2s linear infinite; }
+        .icon-lightning { animation: lightning-strike 2s ease-in-out infinite; }
+        .icon-moon { animation: float-smooth 5s ease-in-out infinite; transform-origin: center; }
 
         body {
             background: radial-gradient(circle at center, #111111 0%, #030303 100%);
@@ -85,8 +114,9 @@
             animation: alert-pulse 2s infinite ease-in-out;
         }
 
-        .main-weather-info { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 15px 0 0 0; }
-        #main-weather-icon { width: 80px; height: 80px; filter: drop-shadow(0 0 8px currentColor); transition: filter 0.8s ease; }
+        .main-weather-info { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 15px 0 0 0; }
+        #main-weather-icon-container { width: 85px; height: 85px; display: flex; align-items: center; justify-content: center; }
+        .main-weather-svg { width: 100%; height: 100%; filter: drop-shadow(0 0 8px currentColor); transition: all 0.8s ease; }
         #temp { font-size: clamp(3.5rem, 15vw, 5rem); font-weight: 900; line-height: 0.9; letter-spacing: -3px; }
         
         #feels-like-container { font-size: 0.85rem; color: #aaa; margin: 0 0 5px 0; font-weight: 600; }
@@ -113,29 +143,125 @@
         #uv-bar-fill { height: 100%; width: 0%; border-radius: 10px; transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
         #uv-desc { font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
 
-        /* --- DYNAMICZNY CYKL ASTRONOMICZNY --- */
-        .astro-card { background: rgba(255, 255, 255, 0.03); border-radius: 25px; padding: 20px 15px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
-        .astro-scene { height: 100px; position: relative; border-bottom: 1px dashed rgba(255,255,255,0.12); margin-bottom: 12px; }
-        .astro-path-svg { position: absolute; width: 100%; height: 100%; top: 0; left: 0; }
-        .path-bg { stroke: rgba(255,255,255,0.08); stroke-width: 1.5; fill: none; stroke-dasharray: 4; }
-        .path-active { stroke: currentColor; stroke-width: 3; fill: none; stroke-linecap: round; animation: path-pulse 3s infinite ease-in-out; transition: stroke 0.8s ease; }
-        #astro-object-wrapper { position: absolute; display: flex; flex-direction: column; align-items: center; transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); z-index: 10; }
-        #astro-icon { font-size: 2.2rem; filter: drop-shadow(0 0 10px currentColor); margin: 0; padding: 0; line-height: 1; }
-        #astro-point { width: 8px; height: 8px; background: #fff; border-radius: 50%; box-shadow: 0 0 10px currentColor, 0 0 20px currentColor; margin-top: 2px; }
-        .astro-labels { display: flex; justify-content: space-between; font-size: 0.75rem; color: #999; }
+        /* --- NOWY, ZMODERNIZOWANY CYKL ASTRONOMICZNY --- */
+        .astro-card { 
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%); 
+            border-radius: 30px; 
+            padding: 22px 18px; 
+            position: relative; 
+            overflow: hidden; 
+            border: 1px solid rgba(255,255,255,0.05); 
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.1);
+        }
+        .astro-scene { 
+            height: 140px; 
+            position: relative; 
+            margin-bottom: 12px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        
+        /* Delikatne tło sferyczne (Kopuła nieba) */
+        .sky-glow {
+            position: absolute;
+            top: 15%;
+            left: 5%;
+            width: 90%;
+            height: 40px;
+            background: radial-gradient(ellipse at bottom, currentColor 0%, transparent 70%);
+            opacity: 0.06;
+            pointer-events: none;
+            transition: color 0.8s ease, opacity 0.8s ease;
+        }
+
+        .orbit-ellipse {
+            position: absolute; 
+            top: 50%; 
+            left: 5%; 
+            width: 90%; 
+            height: 60px;
+            border: 1.5px dashed rgba(255, 255, 255, 0.15); 
+            border-radius: 50%;
+            transform: translateY(-50%); 
+            pointer-events: none;
+            transition: border-color 0.8s ease;
+        }
+        .horizon-line {
+            position: absolute; 
+            top: 50%; 
+            left: 2%; 
+            width: 96%; 
+            height: 2px;
+            background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 20%, rgba(255, 255, 255, 0.2) 80%, transparent 100%);
+            transform: translateY(-50%); 
+            pointer-events: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+        .astro-3d-object {
+            position: absolute; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            transition: opacity 0.2s ease, filter 0.2s ease; 
+            z-index: 5;
+            transform-origin: center bottom; 
+            pointer-events: none;
+        }
+        
+        /* Efekt poświaty aura wokół ikony */
+        .astro-icon-aura {
+            position: absolute;
+            top: 35%;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, currentColor 0%, transparent 70%);
+            opacity: 0.35;
+            filter: blur(4px);
+            mix-blend-mode: screen;
+            transform: translateY(-50%);
+            transition: color 0.8s ease;
+            z-index: -1;
+        }
+        
+        .astro-3d-icon { 
+            font-size: 2.4rem; 
+            line-height: 1; 
+            filter: drop-shadow(0 0 12px currentColor); 
+            transition: color 0.8s ease; 
+            position: relative;
+        }
+        .astro-3d-point { 
+            width: 8px; 
+            height: 8px; 
+            background: #fff; 
+            border-radius: 50%; 
+            box-shadow: 0 0 10px currentColor, 0 0 4px #fff; 
+            margin-top: 4px; 
+            transition: color 0.8s ease; 
+        }
+        .astro-labels { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 0.78rem; 
+            color: #aaa; 
+            font-weight: 600;
+            padding: 0 4px;
+        }
 
         /* --- WYKRES HORIZONTALNY --- */
         .chart-container-scroll { overflow-x: auto; scrollbar-width: none; margin: 5px 0; border-radius: 20px; background: rgba(255,255,255,0.01); padding: 10px 0; position: relative; }
         .chart-container-scroll::-webkit-scrollbar { display: none; }
-        .chart-wrapper-inner { position: relative; height: 135px; width: 680px; }
+        .chart-wrapper-inner { position: relative; height: 135px; width: 680px; min-width: 680px; flex-shrink: 0; }
         .chart-svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
         .chart-line-path { transition: stroke 0.8s ease; }
         .chart-html-layer { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; }
         .chart-node-label { position: absolute; display: flex; flex-direction: column; align-items: center; width: 60px; transform: translateX(-30px); text-align: center; }
         .cn-time { font-size: 0.75rem; font-weight: 700; color: #888; }
-        .cn-icon { width: 30px; height: 30px; margin: 1px 0; }
+        .cn-icon { width: 38px; height: 38px; margin: 2px 0; filter: drop-shadow(0 0 4px currentColor); transition: color 0.8s ease; }
         .cn-temp { font-size: 0.95rem; font-weight: 900; color: #fff; }
 
+        /* --- PROGNOZA TYGODNIOWA --- */
         .forecast-long { display: flex; flex-direction: column; gap: 8px; }
         .long-day-item { 
             display: flex; justify-content: space-between; align-items: center; 
@@ -146,7 +272,7 @@
         .day-desc { flex-grow: 1; font-size: 0.75rem; color: #aaa; padding-left: 15px; text-transform: capitalize; }
         .day-temps { font-size: 0.95rem; font-weight: 900; min-width: 70px; text-align: right; }
         .temp-night { color: #666; font-size: 0.8rem; margin-left: 5px; }
-        .day-icon-small { width: 32px; height: 32px; }
+        .day-icon-small { width: 42px; height: 42px; filter: drop-shadow(0 0 4px currentColor); transition: color 0.8s ease; flex-shrink: 0; }
 
         input { background: #141414; border: 1px solid #282828; color: white; padding: 10px 14px; border-radius: 15px; width: 160px; outline: none; font-size: 0.9rem; transition: border 0.3s; flex-grow: 1; }
         input:focus { border-color: currentColor; }
@@ -173,7 +299,7 @@
         <div class="baro-alert" id="baro-storm-alert">⚠️ Alert: Gwałtowny spadek ciśnienia (możliwa burza)</div>
         
         <div class="main-weather-info">
-            <img id="main-weather-icon" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'></svg>" alt="Pogoda">
+            <div id="main-weather-icon-container"></div>
             <div id="temp">--°C</div>
         </div>
         <div id="feels-like-container">Odczuwalna: <span id="feels-like">--°C</span></div>
@@ -243,18 +369,24 @@
             <span class="section-title">Cykl Astronomiczny</span>
             <div class="astro-card">
                 <div class="astro-scene">
-                    <svg class="astro-path-svg" viewBox="0 0 400 100" preserveAspectRatio="none">
-                        <path class="path-bg" d="M 20 90 Q 200 20 380 90" />
-                        <path id="path-active" class="path-active" d="M 20 90 Q 200 20 380 90" />
-                    </svg>
-                    <div id="astro-object-wrapper">
-                        <span id="astro-icon">☀️</span>
-                        <div id="astro-point"></div>
+                    <div class="sky-glow dynamic-color"></div>
+                    <div class="orbit-ellipse"></div>
+                    <div class="horizon-line"></div>
+                    
+                    <div id="astro-sun" class="astro-3d-object">
+                        <div class="astro-icon-aura dynamic-color"></div>
+                        <span class="astro-3d-icon">☀️</span>
+                        <div class="astro-3d-point"></div>
+                    </div>
+                    <div id="astro-moon" class="astro-3d-object">
+                        <div class="astro-icon-aura" id="moon-aura"></div>
+                        <span class="astro-3d-icon">🌙</span>
+                        <div class="astro-3d-point"></div>
                     </div>
                 </div>
                 <div class="astro-labels">
                     <div id="astro-start">--</div>
-                    <div id="astro-status" style="font-weight: 900; text-transform: uppercase;">--</div>
+                    <div id="astro-status" style="font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;">--</div>
                     <div id="astro-end">--</div>
                 </div>
             </div>
@@ -280,7 +412,7 @@
 
     <script>
         const API_KEY = 'e94db93056809bfb981e952b387a22e6';
-        let currentCity = "Warszawa", sunData = { rise: 0, set: 0 }, cityTimezone = 0, lastLat = null, lastLon = null, cloudCover = 0, currentThemeColor = "#ffcc00";
+        let currentCity = "Warszawa", sunData = { rise: 0, set: 0 }, cityTimezone = 0, lastLat = null, lastLon = null, cloudCover = 0, currentThemeColor = "#ffcc00", isPolarDay = false, isPolarNight = false;
 
         let idleTimer;
         const controls = document.getElementById('controls-panel');
@@ -297,6 +429,72 @@
             document.addEventListener(evt, resetIdleTimer);
         });
         resetIdleTimer();
+
+        // --- ZMODERNIZOWANY GENERATOR DYNAMICZNYCH IKON SVG ---
+        function getWeatherSVG(icon, className = "") {
+            const isNight = icon.endsWith('n');
+            const code = icon.substring(0, 2);
+            let content = "";
+            
+            switch(code) {
+                case '01': // Czyste niebo
+                    if (isNight) {
+                        content = `<path class="icon-moon" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
+                    } else {
+                        content = `<g class="icon-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></g>`;
+                    }
+                    break;
+                case '02': // Lekkie zachmurzenie
+                    if (isNight) {
+                        content = `
+                        <g class="icon-moon" transform="translate(3, -2) scale(0.9)"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" opacity="0.75"></path></g>
+                        <path class="icon-cloud" fill="#101010" d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>`;
+                    } else {
+                        content = `
+                        <g class="icon-sun-back"><circle cx="16" cy="7" r="3.5"></circle><line x1="16" y1="1" x2="16" y2="2.5"></line><line x1="16" y1="11.5" x2="16" y2="13"></line><line x1="12.11" y1="3.11" x2="13.17" y2="4.17"></line><line x1="18.83" y1="9.83" x2="19.89" y2="10.89"></line><line x1="10.5" y1="7" x2="12" y2="7"></line><line x1="20" y1="7" x2="21.5" y2="7"></line><line x1="12.11" y1="10.89" x2="13.17" y2="9.83"></line><line x1="18.83" y1="4.17" x2="19.89" y2="3.11"></line></g>
+                        <path class="icon-cloud" fill="#101010" d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>`;
+                    }
+                    break;
+                case '03': // Chmury rozproszone
+                    content = `<path class="icon-cloud" d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>`;
+                    break;
+                case '04': // Całkowite zachmurzenie
+                    content = `
+                    <path class="icon-cloud-back" opacity="0.4" d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" transform="translate(-3, -3) scale(0.9)"></path>
+                    <path class="icon-cloud" fill="#101010" d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>`;
+                    break;
+                case '09': // Ulewa / Deszcz przelotny
+                case '10': // Deszcz
+                    content = `
+                    <path class="icon-cloud" d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                    <line class="icon-rain-line" x1="9" y1="22" x2="7" y2="25" stroke-width="2"></line>
+                    <line class="icon-rain-line" x1="13" y1="22" x2="11" y2="25" stroke-width="2" style="animation-delay: 0.3s;"></line>
+                    <line class="icon-rain-line" x1="17" y1="22" x2="15" y2="25" stroke-width="2" style="animation-delay: 0.6s;"></line>`;
+                    break;
+                case '11': // Burza
+                    content = `
+                    <path class="icon-cloud" d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                    <polyline class="icon-lightning" points="13 20 10 23 13 23 11 26 15 22 12 22 14 20" stroke-width="2" fill="currentColor"></polyline>`;
+                    break;
+                case '13': // Śnieg
+                    content = `
+                    <path class="icon-cloud" d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                    <circle class="icon-rain-line" cx="8" cy="23" r="1.2" fill="currentColor"></circle>
+                    <circle class="icon-rain-line" cx="12" cy="24" r="1.2" fill="currentColor" style="animation-delay: 0.4s;"></circle>
+                    <circle class="icon-rain-line" cx="16" cy="23" r="1.2" fill="currentColor" style="animation-delay: 0.8s;"></circle>`;
+                    break;
+                case '50': // Mgła
+                    content = `
+                    <line class="icon-cloud" x1="4" y1="8" x2="20" y2="8"></line>
+                    <line class="icon-cloud" x1="2" y1="12" x2="22" y2="12" style="animation-delay: 0.3s;"></line>
+                    <line class="icon-cloud" x1="6" y1="16" x2="18" y2="16" style="animation-delay: 0.6s;"></line>
+                    <line class="icon-cloud" x1="4" y1="20" x2="20" y2="20" style="animation-delay: 0.9s;"></line>`;
+                    break;
+                default:
+                    content = `<circle cx="12" cy="12" r="8"></circle>`;
+            }
+            return `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${content}</svg>`;
+        }
 
         function updateThermalComfort(temp, humidity, windKmH) {
             const el = document.getElementById('comfort-index');
@@ -466,46 +664,124 @@
             return "Zmierzch żeglarski";
         }
 
+        // --- ZMODERNIZOWANA FUNKCJA POZYCJONOWANIA ORBITY 3D ---
+        function update3DObject(elementId, angle, themeColor, forceHighlight = false, forceDim = false) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+
+            const radiusX = 45; 
+            const radiusY = 23; 
+
+            const x = 50 + radiusX * Math.cos(angle);
+            const y = 50 + radiusY * Math.sin(angle);
+
+            const depth = Math.sin(angle);
+
+            let scale = 0.9 + depth * 0.3;
+            let opacity = 0.65 + depth * 0.35;
+            let filter = 'none';
+            let zIndex = depth < 0 ? 1 : 5;
+
+            if (depth < 0) {
+                filter = `blur(${Math.abs(depth) * 1.5}px)`;
+            }
+
+            if (forceHighlight) {
+                scale = 1.1 + (depth * 0.15); 
+                opacity = 1.0;
+                filter = 'none';
+                zIndex = 6; 
+            } else if (forceDim) {
+                scale = 0.5;
+                opacity = 0.12;
+                filter = 'blur(1px)';
+                zIndex = 1;
+            }
+
+            el.style.left = `${x}%`;
+            el.style.top = `${y}%`;
+            el.style.opacity = opacity;
+            el.style.transform = `translate(-50%, -100%) scale(${scale})`;
+            el.style.zIndex = zIndex;
+            el.style.filter = filter;
+
+            const iconEl = el.querySelector('.astro-3d-icon');
+            const pointEl = el.querySelector('.astro-3d-point');
+            if (iconEl) iconEl.style.color = themeColor;
+            if (pointEl) pointEl.style.color = themeColor;
+        }
+
         function updateAstroUI(cityLocalTime) {
-            const timeSeconds = Math.floor(cityLocalTime.getTime() / 1000);
-            const isDay = timeSeconds >= sunData.rise && timeSeconds < sunData.set;
-            let percent;
+            let percent = 0;
+            let isDay = false;
+            let sunAngle = 0;
 
-            if (isDay) {
-                percent = (timeSeconds - sunData.rise) / (sunData.set - sunData.rise);
-            } else {
-                const nightDuration = 86400 - (sunData.set - sunData.rise);
-                let nightTime = timeSeconds >= sunData.set ? timeSeconds - sunData.set : timeSeconds + (86400 - sunData.set);
-                percent = nightTime / nightDuration;
+            if (isPolarDay || isPolarNight) {
+                const hours = cityLocalTime.getHours() + cityLocalTime.getMinutes() / 60 + cityLocalTime.getSeconds() / 3600;
+                percent = hours / 24; 
+                isDay = isPolarDay;
+                
+                sunAngle = Math.PI - (percent * 2 * Math.PI);
+
+                if (isPolarDay) {
+                    document.getElementById('astro-status').textContent = "Dzień polarny";
+                    updateUVDisplay(calculateUV(percent));
+                } else {
+                    document.getElementById('astro-status').textContent = "Noc polarna";
+                    updateUVDisplay(0);
+                }
+            } else if (sunData.rise && sunData.set) {
+                const currentLocalSeconds = cityLocalTime.getHours() * 3600 + cityLocalTime.getMinutes() * 60 + cityLocalTime.getSeconds();
+                
+                const riseDate = new Date((sunData.rise + cityTimezone) * 1000);
+                const setDate = new Date((sunData.set + cityTimezone) * 1000);
+                
+                const riseLocalSeconds = riseDate.getUTCHours() * 3600 + riseDate.getUTCMinutes() * 60;
+                const setLocalSeconds = setDate.getUTCHours() * 3600 + setDate.getUTCMinutes() * 60;
+
+                isDay = currentLocalSeconds >= riseLocalSeconds && currentLocalSeconds <= setLocalSeconds;
+
+                if (isDay) {
+                    percent = (currentLocalSeconds - riseLocalSeconds) / (setLocalSeconds - riseLocalSeconds);
+                } else {
+                    const totalNightSeconds = (86400 - setLocalSeconds) + riseLocalSeconds;
+                    if (currentLocalSeconds >= setLocalSeconds) {
+                        percent = (currentLocalSeconds - setLocalSeconds) / totalNightSeconds;
+                    } else {
+                        percent = ((86400 - setLocalSeconds) + currentLocalSeconds) / totalNightSeconds;
+                    }
+                }
+
+                percent = Math.min(1, Math.max(0, percent));
+
+                if (isDay) {
+                    sunAngle = Math.PI - (percent * Math.PI);
+                    document.getElementById('astro-status').textContent = getSolarPhaseName(percent, true);
+                    updateUVDisplay(calculateUV(percent));
+                } else {
+                    sunAngle = 2 * Math.PI - (percent * Math.PI);
+                    const moon = getDetailedMoonPhase(cityLocalTime);
+                    document.getElementById('astro-status').textContent = moon.n;
+                    updateUVDisplay(0);
+                }
             }
 
-            percent = Math.min(1, Math.max(0, percent));
+            let forceHighlightSun = isPolarDay;
+            let forceDimSun = isPolarNight;
+            let forceHighlightMoon = isPolarNight;
+            let forceDimMoon = isPolarDay;
 
-            if (isDay) {
-                document.getElementById('astro-icon').textContent = "☀️";
-                document.getElementById('astro-status').textContent = getSolarPhaseName(percent, true);
-                updateUVDisplay(calculateUV(percent));
-            } else {
-                const moon = getDetailedMoonPhase(cityLocalTime);
-                document.getElementById('astro-icon').textContent = moon.i;
-                document.getElementById('astro-status').textContent = moon.n;
-                updateUVDisplay(0);
-            }
+            update3DObject('astro-sun', sunAngle, currentThemeColor, forceHighlightSun, forceDimSun);
 
-            const wrapper = document.getElementById('astro-object-wrapper');
-            if(wrapper) {
-                const x = 20 + (360 * percent), y = 100 - (280 * percent * (1 - percent));
-                wrapper.style.left = `${(x / 400) * 100}%`; 
-                wrapper.style.top = `${y}px`; 
-                wrapper.style.transform = `translate(-50%, -100%)`;
-            }
-            
-            const activePath = document.getElementById('path-active');
-            if(activePath) {
-                const pL = activePath.getTotalLength();
-                activePath.style.strokeDasharray = pL; 
-                activePath.style.strokeDashoffset = pL * (1 - percent);
-            }
+            const currentMoonInfo = getDetailedMoonPhase(cityLocalTime);
+            const moonIconEl = document.querySelector('#astro-moon .astro-3d-icon');
+            if (moonIconEl) moonIconEl.textContent = currentMoonInfo.i;
+
+            const moonColor = isDay ? "rgba(0, 242, 254, 0.45)" : currentThemeColor;
+            update3DObject('astro-moon', sunAngle + Math.PI, moonColor, forceHighlightMoon, forceDimMoon);
+
+            const moonAuraEl = document.getElementById('moon-aura');
+            if (moonAuraEl) moonAuraEl.style.color = moonColor;
         }
 
         async function fetchWeather(lat, lon, city = null) {
@@ -514,10 +790,40 @@
             try {
                 const res = await fetch(url); const data = await res.json();
                 if (data.cod === 200) {
-                    currentCity = city; lastLat = data.coord.lat; lastLon = data.coord.lon;
+                    currentCity = data.name; lastLat = data.coord.lat; lastLon = data.coord.lon;
                     cityTimezone = data.timezone;
                     sunData = { rise: data.sys.sunrise, set: data.sys.sunset };
                     cloudCover = data.clouds.all;
+
+                    const mainIconCode = data.weather[0].icon;
+                    const isAstroPolar = (sunData.rise === sunData.set || !sunData.rise || !sunData.set);
+                    
+                    if (isAstroPolar) {
+                        // --- KOREKTA ASTRONOMICZNA CYKLU POLARNEGO ---
+                        const currentMonth = new Date().getUTCMonth(); // 0 = Sty, 5 = Cze, itd.
+                        const isNorthernSummer = (currentMonth >= 2 && currentMonth <= 8); // Od marca do września
+                        
+                        if (data.coord.lat > 0) { // Półkula północna (np. Szwecja)
+                            if (isNorthernSummer) {
+                                isPolarDay = true;
+                                isPolarNight = false;
+                            } else {
+                                isPolarDay = false;
+                                isPolarNight = true;
+                            }
+                        } else { // Półkula południowa
+                            if (isNorthernSummer) {
+                                isPolarDay = false;
+                                isPolarNight = true;
+                            } else {
+                                isPolarDay = true;
+                                isPolarNight = false;
+                            }
+                        }
+                    } else {
+                        isPolarDay = false;
+                        isPolarNight = false;
+                    }
 
                     document.getElementById('city').textContent = data.name;
                     document.getElementById('temp').textContent = Math.round(data.main.temp) + "°C";
@@ -532,8 +838,7 @@
                     updateThermalComfort(data.main.temp, data.main.humidity, windSpeedKmh);
                     checkPressureTrend(data.main.pressure);
 
-                    const mainIconCode = data.weather[0].icon;
-                    document.getElementById('main-weather-icon').src = `https://openweathermap.org/img/wn/${mainIconCode}@2x.png`;
+                    document.getElementById('main-weather-icon-container').innerHTML = getWeatherSVG(mainIconCode, "main-weather-svg");
                     
                     const rainVal = data.rain ? (data.rain['1h'] || 0) : 0;
                     const snowVal = data.snow ? (data.snow['1h'] || 0) : 0;
@@ -555,22 +860,39 @@
                     document.getElementById('last-update').textContent = `Aktualizacja: ${new Date().toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'})}`;
                     
                     const fT = (u) => {
-                        const date = new Date(u * 1000 + (data.timezone * 1000) + (new Date().getTimezoneOffset() * 60000));
-                        return date.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
+                        const cityLocalDate = new Date((u + data.timezone) * 1000);
+                        const hours = String(cityLocalDate.getUTCHours()).padStart(2, '0');
+                        const minutes = String(cityLocalDate.getUTCMinutes()).padStart(2, '0');
+                        return `${hours}:${minutes}`;
                     };
-                    document.getElementById('astro-start').textContent = `Wschód: ${fT(data.sys.sunrise)}`;
-                    document.getElementById('astro-end').textContent = `Zachód: ${fT(data.sys.sunset)}`;
+
+                    if (isPolarDay) {
+                        document.getElementById('astro-start').textContent = "Dzień polarny";
+                        document.getElementById('astro-end').textContent = "Słońce nie zachodzi";
+                    } else if (isPolarNight) {
+                        document.getElementById('astro-start').textContent = "Noc polarna";
+                        document.getElementById('astro-end').textContent = "Słońce nie wschodzi";
+                    } else {
+                        document.getElementById('astro-start').textContent = `Wschód: ${fT(data.sys.sunrise)}`;
+                        document.getElementById('astro-end').textContent = `Zachód: ${fT(data.sys.sunset)}`;
+                    }
                     
-                    const utcDate = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
-                    const cityNowSeconds = Math.floor((utcDate + (1000 * data.timezone)) / 1000);
-                    const isDayNow = cityNowSeconds >= data.sys.sunrise && cityNowSeconds < data.sys.sunset;
+                    const currentUnixTime = Math.floor(Date.now() / 1000);
+                    let isDayNow = false;
+                    if (isPolarDay) isDayNow = true;
+                    else if (isPolarNight) isDayNow = false;
+                    else isDayNow = (currentUnixTime >= data.sys.sunrise && currentUnixTime <= data.sys.sunset);
+                    
                     currentThemeColor = isDayNow ? "#ffcc00" : "#00ffff";
                     
                     initWeatherParticles(data.weather[0].id, isDayNow);
                     
                     document.getElementById('main-card').style.color = currentThemeColor;
-                    document.querySelectorAll('.dynamic-color, #clock, .path-active, #astro-status, .detail-icon-svg, #astro-point').forEach(el => el.style.color = currentThemeColor);
+                    document.querySelectorAll('.dynamic-color, #clock, .path-active, #astro-status, .detail-icon-svg, .astro-3d-point').forEach(el => el.style.color = currentThemeColor);
                     
+                    const borderEl = document.querySelector('.orbit-ellipse');
+                    if (borderEl) borderEl.style.borderColor = currentThemeColor + '44';
+
                     fetchForecast(data.coord.lat, data.coord.lon, city);
                 }
             } catch (e) { console.log(e); }
@@ -614,13 +936,16 @@
                 pathEl.style.stroke = currentThemeColor;
 
                 points.forEach(p => {
-                    const timeStr = new Date(p.dt * 1000).toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
+                    const cityLocalDate = new Date((p.dt + cityTimezone) * 1000);
+                    const hours = String(cityLocalDate.getUTCHours()).padStart(2, '0');
+                    const minutes = String(cityLocalDate.getUTCMinutes()).padStart(2, '0');
+                    const timeStr = `${hours}:${minutes}`;
                     nodesLayer.innerHTML += `
                         <div class="chart-node-label" style="left: ${p.x}px; top: ${p.y - 30}px;">
                             <span class="cn-temp">${p.temp}°</span>
                         </div>
-                        <div class="chart-node-label" style="left: ${p.x}px; top: 85px;">
-                            <img src="https://openweathermap.org/img/wn/${p.icon}.png" class="cn-icon">
+                        <div class="chart-node-label" style="left: ${p.x}px; top: 78px;">
+                            ${getWeatherSVG(p.icon, "cn-icon")}
                             <span class="cn-time">${timeStr}</span>
                         </div>
                     `;
@@ -630,15 +955,32 @@
                 if(!longList) return;
                 longList.innerHTML = "";
                 const days = {};
+                
                 data.list.forEach(item => {
-                    const d = new Date(item.dt * 1000).toLocaleDateString('pl-PL', { weekday: 'short' });
-                    if (!days[d]) days[d] = { max: -99, min: 99, icon: "", desc: "" };
+                    const cityLocalDate = new Date((item.dt + cityTimezone) * 1000);
+                    const d = cityLocalDate.toLocaleDateString('pl-PL', { weekday: 'short', timeZone: 'UTC' });
+                    const localHour = cityLocalDate.getUTCHours();
+
+                    if (!days[d]) days[d] = { max: -99, min: 99, icon: "", desc: "", bestHourDiff: 24 };
                     if (item.main.temp_max > days[d].max) days[d].max = item.main.temp_max;
                     if (item.main.temp_min < days[d].min) days[d].min = item.main.temp_min;
-                    if (item.dt_txt.includes("12:00:00") || days[d].icon === "") { days[d].icon = item.weather[0].icon; days[d].desc = item.weather[0].description; }
+                    
+                    const hourDiff = Math.abs(localHour - 12);
+                    if (hourDiff < days[d].bestHourDiff || days[d].icon === "") {
+                        days[d].bestHourDiff = hourDiff;
+                        days[d].icon = item.weather[0].icon;
+                        days[d].desc = item.weather[0].description;
+                    }
                 });
+                
                 Object.keys(days).slice(1, 6).forEach(day => {
-                    longList.innerHTML += `<div class="long-day-item"><span class="day-name">${day}</span><img src="https://openweathermap.org/img/wn/${days[day].icon}.png" class="day-icon-small"><span class="day-desc">${days[day].desc}</span><div class="day-temps">${Math.round(days[day].max)}°<span class="temp-night">${Math.round(days[day].min)}°</span></div></div>`;
+                    longList.innerHTML += `
+                        <div class="long-day-item">
+                            <span class="day-name">${day}</span>
+                            ${getWeatherSVG(days[day].icon, "day-icon-small")}
+                            <span class="day-desc">${days[day].desc}</span>
+                            <div class="day-temps">${Math.round(days[day].max)}°<span class="temp-night">${Math.round(days[day].min)}°</span></div>
+                        </div>`;
                 });
             } catch (e) {}
         }
@@ -658,7 +1000,6 @@
         
         function searchCity() { const city = document.getElementById('city-input').value; if (city) fetchWeather(null, null, city); }
         
-        // Start systemów
         setInterval(updateDateTime, 1000); 
         setInterval(refreshData, 900000);
         updateDateTime(); 
